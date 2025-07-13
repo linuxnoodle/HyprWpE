@@ -6,13 +6,13 @@ from gi.repository import Gtk, WebKit, Gtk4LayerShell, Gdk, Gio
 import sys
 import os
 
-# --- ЖЕСТКО ЗАДАННЫЙ ПУТЬ ДЛЯ ОТЛАДКИ ---
+# --- HARDCODED PATH FOR DEBUGGING ---
 HARDCODED_HTML_PATH = "/home/destinyrrj/.steam/steam/steamapps/workshop/content/431960/3518715742/dynamic_wallpaper.html"
 
 class WebWallpaperWindow(Gtk.ApplicationWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print("DEBUG: Окно создается...")
+        print("DEBUG: Window is being created...")
         
         self.webview = WebKit.WebView()
         self.set_child(self.webview)
@@ -27,32 +27,32 @@ class WebWallpaperWindow(Gtk.ApplicationWindow):
 
     def load_the_uri(self):
         if not os.path.exists(HARDCODED_HTML_PATH):
-            print(f"ОШИБКА: Не найден файл для отладки: {HARDCODED_HTML_PATH}")
+            print(f"ERROR: Debug file not found: {HARDCODED_HTML_PATH}")
             return
         uri = Gio.File.new_for_path(HARDCODED_HTML_PATH).get_uri()
-        print(f"DEBUG: Загрузка URI: {uri}")
+        print(f"DEBUG: Loading URI: {uri}")
         self.webview.load_uri(uri)
 
 class WebWallpaperApp(Gtk.Application):
     def __init__(self, *args, **kwargs):
-        # Используем новый, уникальный ID, чтобы избежать конфликтов
+        # Use a new, unique ID to avoid conflicts
         super().__init__(*args, application_id="dev.gemini.hyprpaperwe.standalone.test", **kwargs)
-        print("DEBUG: Приложение инициализировано.")
+        print("DEBUG: Application initialized.")
         self.win = None
 
     def do_activate(self):
-        print("DEBUG: Приложение активируется (do_activate)...")
+        print("DEBUG: Application is activating (do_activate)...")
         if not self.win:
             self.win = WebWallpaperWindow(application=self)
         
         self.win.load_the_uri()
         self.win.present()
-        print("DEBUG: Окно показано.")
+        print("DEBUG: Window presented.")
 
 if __name__ == "__main__":
-    print("DEBUG: Запуск автономного скрипта...")
+    print("DEBUG: Running standalone script...")
     app = WebWallpaperApp()
-    # Используем sys.argv, как в рабочем gtk_test.py
+    # Use sys.argv, like in the working gtk_test.py
     exit_status = app.run(sys.argv)
-    print(f"DEBUG: Приложение завершилось с кодом {exit_status}")
+    print(f"DEBUG: Application finished with exit code {exit_status}")
     sys.exit(exit_status)

@@ -6,7 +6,7 @@ gi.require_version('Gtk4LayerShell', '1.0')
 from gi.repository import Gtk, WebKit, Gtk4LayerShell, Gdk, Gio
 import sys
 
-# Этот код идентичен рабочему gtk_test.py
+# This code is identical to the working gtk_test.py
 class TestApp(Gtk.Application):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, application_id="dev.gemini.importtest", **kwargs)
