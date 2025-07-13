@@ -85,7 +85,7 @@ This project provides a set of scripts to find, unpack, and display wallpapers f
     ```
 OR
     **Use the GUI:**
-    ```bash
+    ```
     python gui.py
     ```
     
