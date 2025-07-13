@@ -83,9 +83,13 @@ This project provides a set of scripts to find, unpack, and display wallpapers f
     ```bash
     ./hyprpaper-we.sh stop
     ```
-
+OR
+    **Use the GUI:**
+    ```bash
+    python gui.py
+    ```
+    
 ## Future Improvements
 
--   A graphical user interface (GUI) to browse and select wallpapers visually.
 -   Support for wallpaper properties (colors, speed, etc.).
 -   Better multi-monitor support.
