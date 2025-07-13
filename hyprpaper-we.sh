@@ -10,24 +10,120 @@ TMP_DIR="/tmp/hyprpaper-we"
 
 # Temporary file to store the PID
 PID_FILE="/tmp/hyprpaper-we.pid"
+# Lock file to prevent race conditions
+LOCK_FILE="/tmp/hyprpaper-we.lock"
 
 # --- Functions ---
 
+# Function to write PID with lock protection
+write_pid() {
+    local pid=$1
+    (
+        flock -x 200
+        echo $pid > "$PID_FILE"
+        echo "New PID: $pid"
+        # Verify PID file was created and readable
+        if [ -f "$PID_FILE" ] && [ -r "$PID_FILE" ]; then
+            echo "PID file created successfully at $PID_FILE"
+            echo "Stored PID: $(cat "$PID_FILE")"
+        else
+            echo "Warning: Failed to create or read PID file"
+        fi
+    ) 200>"$LOCK_FILE"
+}
+
+# Function to read PID with lock protection
+read_pid() {
+    local pid=""
+    if [ -f "$PID_FILE" ]; then
+        (
+            flock -s 200
+            pid=$(cat "$PID_FILE" 2>/dev/null)
+        ) 200>"$LOCK_FILE"
+    fi
+    echo "$pid"
+}
+
 # Function to stop the current wallpaper
 stop_wallpaper() {
+    local killed=false
+    
+    # Debug: Check current state
+    echo "[DEBUG] Checking PID file: $PID_FILE"
+    
+    # Try to use PID file first with lock protection
     if [ -f "$PID_FILE" ]; then
-        local pid_to_kill=$(cat "$PID_FILE")
-        if ps -p $pid_to_kill > /dev/null; then
-            echo "Stopping wallpaper process with PID: $pid_to_kill"
-            kill $pid_to_kill
-            rm "$PID_FILE"
+        local pid_to_kill=$(read_pid)
+        
+        if [ -z "$pid_to_kill" ]; then
+            echo "[DEBUG] PID file exists but is empty"
+            rm -f "$PID_FILE"
         else
-            echo "Process with PID $pid_to_kill not found. Removing stale PID file."
-            rm "$PID_FILE"
+            echo "[DEBUG] Found PID in file: $pid_to_kill"
+            
+            # More robust process check
+            if kill -0 $pid_to_kill 2>/dev/null; then
+                echo "Stopping wallpaper process with PID: $pid_to_kill"
+                # Use SIGTERM first, then SIGKILL if needed
+                kill $pid_to_kill
+                sleep 0.5
+                if kill -0 $pid_to_kill 2>/dev/null; then
+                    echo "Process still running, sending SIGKILL..."
+                    kill -9 $pid_to_kill
+                fi
+                rm -f "$PID_FILE"
+                killed=true
+            else
+                echo "Process with PID $pid_to_kill not found. Removing stale PID file."
+                rm -f "$PID_FILE"
+            fi
         fi
     else
-        echo "No active wallpaper to stop (PID file not found)."
+        echo "[DEBUG] PID file not found at $PID_FILE"
     fi
+    
+    # If PID file method failed, try to find processes by name
+    if [ "$killed" = false ]; then
+        echo "PID file not found or invalid. Searching for wallpaper processes..."
+        
+        # Find and kill mpvpaper processes
+        local mpv_pids=$(pgrep -f "mpvpaper.*$MONITOR")
+        if [ -n "$mpv_pids" ]; then
+            echo "Found mpvpaper processes: $mpv_pids"
+            for pid in $mpv_pids; do
+                echo "Killing mpvpaper process: $pid"
+                kill $pid
+                sleep 0.2
+                if kill -0 $pid 2>/dev/null; then
+                    kill -9 $pid
+                fi
+                killed=true
+            done
+        fi
+        
+        # Find and kill web_viewer processes
+        local web_pids=$(pgrep -f "web_viewer.py")
+        if [ -n "$web_pids" ]; then
+            echo "Found web_viewer processes: $web_pids"
+            for pid in $web_pids; do
+                echo "Killing web_viewer process: $pid"
+                kill $pid
+                sleep 0.2
+                if kill -0 $pid 2>/dev/null; then
+                    kill -9 $pid
+                fi
+                killed=true
+            done
+        fi
+        
+        if [ "$killed" = false ]; then
+            echo "No active wallpaper processes found."
+        fi
+    fi
+    
+    # Ensure PID file is removed
+    rm -f "$PID_FILE"
+    rm -f "$LOCK_FILE"
 }
 
 # Function to set a new wallpaper
@@ -46,7 +142,7 @@ set_wallpaper() {
     fi
 
     # Get basic info from project.json
-    local type=$(jq -r '.type' "$project_json_path")
+    local type=$(jq -r '.type | ascii_downcase' "$project_json_path")
     local file=$(jq -r '.file' "$project_json_path")
     echo "Detected wallpaper type: $type, main file: $file"
 
@@ -91,8 +187,7 @@ set_wallpaper() {
             echo "Launching mpvpaper for $video_path"
             mpvpaper -o "--loop-file=inf --no-audio" "$MONITOR" "$video_path" &
             LAST_PID=$!
-            echo $LAST_PID > "$PID_FILE"
-            echo "New PID: $LAST_PID"
+            write_pid $LAST_PID
         else
             echo "Error: Video file not found at $video_path"
         fi
@@ -104,8 +199,7 @@ set_wallpaper() {
             # Launch the player in the background. Hyprland rules will handle the rest.
             LD_PRELOAD=/usr/lib/libgtk4-layer-shell.so python "$(dirname "$0")/web_viewer.py" "$html_path" &
             LAST_PID=$!
-            echo $LAST_PID > "$PID_FILE"
-            echo "New PID: $LAST_PID"
+            write_pid $LAST_PID
         else
             echo "Error: HTML file not found at $html_path"
         fi

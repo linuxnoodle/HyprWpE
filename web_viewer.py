@@ -13,7 +13,7 @@ class WebWallpaperWindow(Gtk.ApplicationWindow):
         self.webview = WebKit.WebView()
         self.set_child(self.webview)
         
-        # Configure layer shell for wallpaper display
+        # Configure layer shell for background wallpaper display
         Gtk4LayerShell.init_for_window(self)
         Gtk4LayerShell.set_layer(self, Gtk4LayerShell.Layer.BACKGROUND)
         Gtk4LayerShell.set_keyboard_mode(self, Gtk4LayerShell.KeyboardMode.NONE)
@@ -39,14 +39,8 @@ class WebWallpaperApp(Gtk.Application):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <html_filepath>", file=sys.stderr)
         sys.exit(1)
 
-    file_path = sys.argv[1]
-    if not os.path.exists(file_path):
-        print(f"Error: File not found at {file_path}", file=sys.stderr)
-        sys.exit(1)
-
-    uri = Gio.File.new_for_path(file_path).get_uri()
+    uri = Gio.File.new_for_path(sys.argv[1]).get_uri()
     app = WebWallpaperApp(uri)
     app.run(None)
