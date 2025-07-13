@@ -102,7 +102,7 @@ set_wallpaper() {
         if [ -f "$html_path" ]; then
             echo "Launching web_viewer for $html_path"
             # Launch the player in the background. Hyprland rules will handle the rest.
-            python "$(dirname "$0")/web_viewer.py" "$html_path" &
+            LD_PRELOAD=/usr/lib/libgtk4-layer-shell.so python "$(dirname "$0")/web_viewer.py" "$html_path" &
             LAST_PID=$!
             echo $LAST_PID > "$PID_FILE"
             echo "New PID: $LAST_PID"

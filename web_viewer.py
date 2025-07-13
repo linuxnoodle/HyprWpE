@@ -1,21 +1,26 @@
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('WebKit', '6.0')
-from gi.repository import Gtk, WebKit, Gdk, Gio
+gi.require_version('Gtk4LayerShell', '1.0')
+from gi.repository import Gtk, WebKit, Gtk4LayerShell, Gdk, Gio
 import sys
 import os
 
 class WebWallpaperWindow(Gtk.ApplicationWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Set a unique class for the window so Hyprland can identify it
-        self.set_name("HyprPaper-WE-Window")
         
         self.webview = WebKit.WebView()
         self.set_child(self.webview)
         
-        # Go fullscreen
-        self.fullscreen()
+        # Configure layer shell for wallpaper display
+        Gtk4LayerShell.init_for_window(self)
+        Gtk4LayerShell.set_layer(self, Gtk4LayerShell.Layer.BACKGROUND)
+        Gtk4LayerShell.set_keyboard_mode(self, Gtk4LayerShell.KeyboardMode.NONE)
+        Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.TOP, True)
+        Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.BOTTOM, True)
+        Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.LEFT, True)
+        Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.RIGHT, True)
 
     def load_uri(self, uri):
         self.webview.load_uri(uri)
