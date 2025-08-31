@@ -1,95 +1,135 @@
 # HyprPaper-WE: Wallpaper Engine For Hyprland
 
-A script-based solution to bring Wallpaper Engine's video and web wallpapers to the Hyprland compositor on Wayland.
+A script-based solution with a full-featured GUI to bring Wallpaper Engine's video, web, and scene wallpapers to the Hyprland compositor on Wayland.
 
-This project provides a set of scripts to find, unpack, and display wallpapers from your existing Steam Wallpaper Engine collection. It uses native Wayland tools for rendering, avoiding the need for Wine/Proton to run the wallpapers themselves.
+This project provides a set of scripts and a GTK4 graphical interface to find, configure, and display wallpapers from your existing Steam Wallpaper Engine collection. It uses native Wayland tools for rendering, avoiding the need for Wine/Proton to run the wallpapers themselves. I just made a hard-fork of this project because of how much I changed, and I really didn't want to integrate it with the original repo [here](https://github.com/Destinyrrj/HyprPaper-we/) (it looked to be all vibe coded anyway). 
 
-**Disclaimer:** This is a community project and is not affiliated with Wallpaper Engine or its developers. It only supports a subset of wallpapers (video and web) and (for now) does not support interactive scene-based wallpapers.
+**Disclaimer:** This is a community project and is not affiliated with Wallpaper Engine or its developers. It supports a subset of wallpapers (video, web, and basic scenes) and may not render all effects perfectly.
+
+-----
 
 ## Features
 
--   **Video Wallpaper Support:** Plays video wallpapers in a loop using the efficient `mpvpaper`.
--   **Web Wallpaper Support:** Renders web-based wallpapers (HTML, JS, CSS) using a lightweight GTK4 WebView.
--   **Native Performance:** Uses Wayland-native tools for low resource consumption.
--   **CLI Control:** Easy-to-use command-line interface to set and stop wallpapers.
+  - **Multi-Type Support:**
+
+      - **Video:** Plays video files using the efficient `mpvpaper`.
+      - **Web:** Renders HTML, JS, and CSS based wallpapers using a `WebKitGTK` view.
+      - **Scene:** Renders basic 2D image-layer scenes using `pyglet` and OpenGL.
+
+  - **Feature-Rich GUI:** A modern GTK4 application for browsing, searching, and filtering your installed wallpapers.
+
+  - **Per-Wallpaper Properties:** Adjust speed, audio playback, and scaling mode (Cover, Contain, Fill) for video wallpapers directly from the GUI.
+
+  - **Multi-Monitor Management:** Apply wallpapers to specific monitors or all monitors at once. Save and load entire multi-monitor configurations.
+
+  - **Panel Margin Configuration:** Set pixel offsets for top, bottom, left, and right edges to prevent wallpapers from drawing underneath panels like Waybar.
+
+  - **Native Wayland Integration:** Uses `mpvpaper` for videos and `gtk4-layer-shell` for Web/Scene types, ensuring low resource usage and proper placement on the background layer without complex window rules.
+
+  - **Powerful CLI:** A script for power users to set, stop, and load wallpaper configurations from the terminal.
+
+-----
 
 ## How It Works
 
-1.  The main `hyprpaper-we.sh` script takes a Wallpaper Engine ID as input.
-2.  It locates the corresponding wallpaper in your Steam library (`~/.steam/steam/steamapps/workshop/content/431960`).
-3.  It reads the `project.json` file to determine the wallpaper type (video, web, etc.).
-4.  If the wallpaper assets are packed in a `.pkg` file, it uses `unpacker.py` to extract them.
-5.  Based on the type, it launches the appropriate player:
-    -   **Video:** `mpvpaper` is launched to display the video file on the correct monitor.
-    -   **Web:** `web_viewer.py` is launched, which creates a GTK4 window with a WebView. A Hyprland window rule then forces this window to the background layer.
-6.  The script saves the process ID (PID) to `/tmp/hyprpaper-we.pid` for easy stopping.
+1.  **GUI (`gui.py`):** The primary and recommended way to interact with the system. It scans the Wallpaper Engine directory, displays previews, and provides controls for applying wallpapers and adjusting settings.
+2.  **Configuration:** The GUI saves your settings into two files in `~/.config/hyprpaper-we/`:
+      - `wallpapers.yaml`: Stores your multi-monitor wallpaper setups.
+      - `properties.yaml`: Stores per-wallpaper properties (like speed, audio) and global settings like panel margins.
+3.  **Backend Script (`hyprpaper-we.sh`):** This script is called by the GUI (and can be used directly) to perform the main logic.
+      - It takes a Wallpaper Engine ID and a monitor name.
+      - It reads the wallpaper's `project.json` to determine its type (video, web, or scene).
+      - If assets are packed in a `.pkg` archive, `unpacker.py` is used to extract them into `/tmp/hyprpaper-we`.
+      - It launches the appropriate renderer for the wallpaper type:
+          - **Video:** `mpvpaper` displays the video on the target monitor, using properties from `properties.yaml`.
+          - **Web:** `web_viewer.py` launches a `gtk4-layer-shell` window with an embedded web view.
+          - **Scene:** `scene_viewer.py` launches a `gtk4-layer-shell` window that renders the scene with `pyglet`.
+4.  **Layering:** The `web_viewer.py` and `scene_viewer.py` applications use the `gtk4-layer-shell` protocol to instruct Hyprland to place them on the background layer, making them function as proper wallpapers.
+
+-----
 
 ## Prerequisites
 
--   **Hyprland:** This is designed specifically for the Hyprland Wayland compositor.
--   **Wallpaper Engine:** You must own Wallpaper Engine on Steam and have some wallpapers downloaded.
--   **Python 3**
--   **jq:** A command-line JSON processor.
--   **mpvpaper:** For video wallpapers.
--   **GTK4, WebKitGTK & PyGObject:** For web wallpapers.
+  - **Hyprland:** This is designed specifically for the Hyprland Wayland compositor.
+  - **Wallpaper Engine:** You must own Wallpaper Engine on Steam and have wallpapers downloaded.
+  - **Python 3**
+  - **Dependencies:** You will need the following packages: `mpvpaper`, `jq`, `yq`, `gtk4`, `webkitgtk-6.0`, `python-gobject`, `gtk4-layer-shell`, and `python-pyglet`.
+
+-----
 
 ## Installation
 
 1.  **Clone the repository:**
+
     ```bash
-    git clone <repository_url>
-    cd <repository_directory>
+    git clone https://github.com/linuxnoodle/HyprPaper-we
+    cd HyprPaper-ew
     ```
 
-2.  **Install dependencies (for Arch Linux):**
+2.  **Install dependencies (example for Arch Linux):**
+
     ```bash
-    yay -S jq mpvpaper gtk4 webkitgtk-6.0 python-gobject
+    sudo pacman -S mpvpaper yq python-gobject python-pyglet python-yaml webkitgtk-6.0 gtk4 gtk-layer-shell
+    # or using an aur helper like paru
+    paru -S mpvpaper yq python-gobject python-pyglet python-yaml webkitgtk-6.0 gtk4 gtk4-layer-shell
     ```
+
+    *Note: The `yq` required by this project is the Python implementation. If your package manager provides multiple, ensure you install the one based on Python, not the one written in Go.*
 
 3.  **Make the main script executable:**
+
     ```bash
     chmod +x hyprpaper-we.sh
     ```
-
-4.  **Configure Hyprland:**
-    Add the following window rules to your `~/.config/hypr/hyprland.conf` file. This is crucial for web wallpapers to appear correctly in the background.
-
-    ```
-    # Rules for HyprPaper-WE
-    windowrulev2 = workspace special silent, class:^(HyprPaper-WE-Window)$
-    windowrulev2 = nofocus, class:^(HyprPaper-WE-Window)$
-    windowrulev2 = noanim, class:^(HyprPaper-WE-Window)$
-    windowrulev2 = rounding 0, class:^(HyprPaper-WE-Window)$
-    ```
-    After adding the rules, reload your Hyprland configuration (usually with `SUPER + M` or `SUPER + SHIFT + R`).
+-----
 
 ## Usage
 
+### GUI (Recommended)
+
+The easiest way to use the application is through the GUI.
+
+1.  **Launch the selector:**
+    ```bash
+    python gui.py
+    ```
+2.  **Select your monitor** from the dropdown menu.
+3.  **Click on a wallpaper** to apply it instantly.
+4.  If a wallpaper is selected, a **properties sidebar** will appear. For video wallpapers, you can adjust settings here. Click **"Apply Changes"** to see them take effect.
+5.  Use the **"Configure Offset"** button to set panel margins. Any running Web or Scene wallpapers will need to be relaunched to see the change.
+6.  Click **"Save Setup"** to save your current wallpaper configuration for all monitors. This saved setup can be loaded automatically at startup.
+
+### Command Line
+
+The `hyprpaper-we.sh` script can be used for scripting or manual control.
+
 1.  **Find a Wallpaper ID:**
-    Navigate to your Wallpaper Engine workshop directory:
+    Navigate to your Wallpaper Engine workshop directory to find IDs:
     `ls ~/.steam/steam/steamapps/workshop/content/431960`
-    The numbered directories are the IDs.
 
 2.  **Set a wallpaper:**
+
     ```bash
+    # Set wallpaper on the default monitor
     ./hyprpaper-we.sh <ID_of_the_wallpaper>
-    ```
-    Example:
-    ```bash
-    ./hyprpaper-we.sh 822865320
+
+    # Set wallpaper on a specific monitor
+    ./hyprpaper-we.sh 822865320 DP-1
     ```
 
-3.  **Stop the current wallpaper:**
+3.  **Stop all wallpapers:**
+
     ```bash
     ./hyprpaper-we.sh stop
     ```
-OR
-    **Use the GUI:**
-    ```
-    python gui.py
-    ```
-    
-## Future Improvements
 
--   Support for wallpaper properties (colors, speed, etc.).
--   Better multi-monitor support.
+4.  **Load a saved setup:**
+
+    ```bash
+    # With no arguments, loads the default config and applies it
+    ./hyprpaper-we.sh
+
+    # Explicitly load the default or a specific config file
+    ./hyprpaper-we.sh --load-config
+    ./hyprpaper-we.sh --load-config ~/.config/hyprpaper-we/my_other_setup.yaml
+    ```

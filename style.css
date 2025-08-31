@@ -1,0 +1,20 @@
+/*
+* {
+    outline: 1px solid red;
+}
+
+.highlight {
+    outline: 1px solid yellow;
+} 
+*/
+
+.flowbox-item div {
+    min-width: 160px;
+    max-width: 160px;
+    min-height: 180px;
+}
+
+.flowbox-item button {
+  padding-top: 20px;
+  padding-bottom: 10px;
+}
