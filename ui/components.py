@@ -1,15 +1,7 @@
 import gi
 import os
 from gi.repository import Gtk, Gdk
-
-# Assuming these are defined elsewhere or will be imported
-# from config.constants import WALLPAPER_WIDGET_WIDTH, WALLPAPER_WIDGET_HEIGHT, IMAGE_FRAME_WIDTH, IMAGE_FRAME_HEIGHT
-
-# For now, defining them here to avoid import issues if the constants file isn't fully set up
-WALLPAPER_WIDGET_WIDTH = 160
-WALLPAPER_WIDGET_HEIGHT = 180
-IMAGE_FRAME_WIDTH = 150
-IMAGE_FRAME_HEIGHT = 100
+from config.constants import WALLPAPER_WIDGET_WIDTH, WALLPAPER_WIDGET_HEIGHT, IMAGE_FRAME_WIDTH, IMAGE_FRAME_HEIGHT
 
 class WallpaperWidget:
     @staticmethod
@@ -25,6 +17,7 @@ class WallpaperWidget:
         image_frame = Gtk.Frame()
         image_frame.set_size_request(IMAGE_FRAME_WIDTH, IMAGE_FRAME_HEIGHT)
         image_frame.set_halign(Gtk.Align.CENTER)
+        image_frame.set_margin_top(15)
         
         image = Gtk.Image()
         image.set_pixel_size(120)

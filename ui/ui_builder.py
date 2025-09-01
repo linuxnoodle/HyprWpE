@@ -1,8 +1,7 @@
 import gi
 from gi.repository import Gtk, Gdk
 
-# Importing constants for UI sizing
-from config.constants import WALLPAPER_WIDGET_WIDTH
+from config.constants import WALLPAPER_WIDGET_WIDTH, WALLPAPER_WIDGET_HEIGHT
 
 class UIBuilder:
     def __init__(self, app_window: Gtk.ApplicationWindow, callbacks: dict, monitors: list):
@@ -257,7 +256,7 @@ class GridManager:
             self.flowbox.append(widget)
             flowbox_child = widget.get_parent()
             if flowbox_child:
-                flowbox_child.set_size_request(WALLPAPER_WIDGET_WIDTH, -1)
+                flowbox_child.set_size_request(WALLPAPER_WIDGET_WIDTH, WALLPAPER_WIDGET_HEIGHT)
                 flowbox_child.set_halign(Gtk.Align.START)
         
         print(f"Created {len(self.wallpaper_widgets)} wallpaper widgets")

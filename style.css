@@ -10,11 +10,10 @@
 
 .flowbox-item div {
     min-width: 160px;
-    max-width: 160px;
     min-height: 180px;
 }
 
 .flowbox-item button {
-  padding-top: 20px;
+  padding-top: 10px;
   padding-bottom: 10px;
 }
