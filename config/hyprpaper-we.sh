@@ -6,19 +6,19 @@ WALLPAPER_DIR="~/.steam/steam/steamapps/workshop/content/431960"
 # Default monitor (overridden if user passes second argument)
 DEFAULT_MONITOR="DP-1"
 # YAML config file for saved monitor setups
-YAML_FILE="~/.config/hyprpaper-we/wallpapers.yaml"
+YAML_FILE="~/.config/HyprWpE/wallpapers.yaml"
 # YAML config file for per-wallpaper properties
-PROPERTIES_FILE="~/.config/hyprpaper-we/properties.yaml"
+PROPERTIES_FILE="~/.config/HyprWpE/properties.yaml"
 # Temporary directory for unpacking
-TMP_DIR="/tmp/hyprpaper-we"
+TMP_DIR="/tmp/HyprWpE"
 
 # Use argument for monitor if provided, else default
 MONITOR="${2:-$DEFAULT_MONITOR}"
 
 # Temporary file to store the PID, now monitor-specific
-PID_FILE="/tmp/hyprpaper-we-${MONITOR}.pid"
+PID_FILE="/tmp/HyprWpE-${MONITOR}.pid"
 # Lock file to prevent race conditions, now monitor-specific
-LOCK_FILE="/tmp/hyprpaper-we-${MONITOR}.lock"
+LOCK_FILE="/tmp/HyprWpE-${MONITOR}.lock"
 
 
 # --- Functions ---
@@ -48,7 +48,7 @@ stop_all_wallpapers() {
     pkill -f "mpvpaper"
     pkill -f "web_viewer.py"
     pkill -f "scene_viewer.py"
-    rm -f /tmp/hyprpaper-we-*
+    rm -f /tmp/HyprWpE-*
     echo "All active wallpapers have been stopped."
 }
 

@@ -12,7 +12,7 @@ import math
 import yaml
 
 # --- Added configuration paths ---
-CONFIG_DIR = os.path.expanduser("~/.config/hyprpaper-we")
+CONFIG_DIR = os.path.expanduser("~/.config/HyprWpE")
 PROPERTIES_FILE = os.path.join(CONFIG_DIR, "properties.yaml")
 
 def load_properties():
