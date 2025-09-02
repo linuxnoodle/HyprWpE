@@ -63,13 +63,9 @@ class UIBuilder:
         search_entry.connect("search-changed", self.callbacks['on_search_changed'])
         titlebar.append(search_entry)
 
-        monitor_combo = Gtk.ComboBoxText()
-        monitor_combo.append_text("All Monitors")
-        for m in self.monitors:
-            monitor_combo.append_text(m)
-        monitor_combo.set_active(0)
-        monitor_combo.connect("changed", self.callbacks['on_monitor_changed'])
-        titlebar.append(monitor_combo)
+        monitor_btn = Gtk.Button(label="Select Monitors", icon_name="video-display-symbolic")
+        monitor_btn.connect("clicked", self.callbacks['on_select_monitors_clicked'])
+        titlebar.append(monitor_btn)
 
         return titlebar
 

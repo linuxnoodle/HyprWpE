@@ -93,10 +93,10 @@ class WallpaperSelectorApp(Gtk.Application):
             'on_configure_offset_clicked': self.on_configure_offset_clicked,
             'on_refresh_clicked': self.on_refresh_clicked,
             'on_search_changed': self.on_search_changed,
-            'on_monitor_changed': self.on_monitor_changed,
             'on_filter_toggled': self.on_filter_toggled,
             'hide_sidebar': self.hide_sidebar,
-            'on_apply_changes_clicked': self.on_apply_changes_clicked
+            'on_apply_changes_clicked': self.on_apply_changes_clicked,
+            'on_select_monitors_clicked': self.on_select_monitors_clicked
         }
         
         # Create UI Builder and build the main UI
@@ -170,12 +170,18 @@ class WallpaperSelectorApp(Gtk.Application):
         self.selected_wallpaper_id = wallpaper_id
         
         self.sidebar.set_visible(True)
-        current_width = self.win.get_allocated_width()
+        current_width = self.win.get_width()
         initial_position = int(current_width * 3 / 4)
         self.ui_builder.set_paned_position(initial_position)
         
         self.populate_sidebar_values()
-        self.apply_wallpaper()
+        
+        # Apply to selected monitors if available, otherwise current monitor
+        if hasattr(self, 'selected_monitors') and self.selected_monitors:
+            for monitor_name in self.selected_monitors:
+                self.apply_wallpaper(monitor=monitor_name)
+        else:
+            self.apply_wallpaper()
 
     def clear_flowbox(self):
         """Clear all children from the flowbox"""
@@ -245,7 +251,7 @@ class WallpaperSelectorApp(Gtk.Application):
         if wid not in self.wallpaper_properties: self.wallpaper_properties[wid] = {}
         if isinstance(widget, Gtk.CheckButton): self.wallpaper_properties[wid]['audio'] = widget.get_active()
         elif isinstance(widget, Gtk.SpinButton): self.wallpaper_properties[wid]['speed'] = widget.get_value()
-        elif isinstance(widget, Gtk.ComboBoxText): self.wallpaper_properties[wid]['scale'] = widget.get_active_text()
+        elif isinstance(widget, Gtk.ComboBoxText): self.wallpaper_properties[wid]['scale'] = widget.get_text()
         self.config_manager.save_properties(self.wallpaper_properties)
 
     # --- Performance Fix: New handler for the "Apply" button ---
@@ -270,6 +276,7 @@ class WallpaperSelectorApp(Gtk.Application):
         try:
             wp_data = self.data_manager.get_wallpaper_by_id(str(wid_to_apply))
             if wp_data:
+                # Only apply to the specified monitor
                 self.monitor_manager.apply_wallpaper(
                     str(wid_to_apply), 
                     monitor_to_apply, 
@@ -281,13 +288,15 @@ class WallpaperSelectorApp(Gtk.Application):
 
 
     def on_save_setup_clicked(self, button):
-        config_to_save = {'wallpaper_dir': self.wallpaper_dir, 'wallpapers': self.current_wallpapers}
+        # Use monitor_manager's current_wallpapers instead of self.current_wallpapers
+        config_to_save = {
+            'wallpaper_dir': self.wallpaper_dir,
+            'wallpapers': self.monitor_manager.current_wallpapers
+        }
         self.config_manager.save_config(config_to_save)
         print(f"Wallpaper setup saved to {YAML_FILE}")
         print("Updating and saving properties for all active wallpapers...")
-        # Update current_wallpapers from MonitorManager
-        self.current_wallpapers = self.monitor_manager.current_wallpapers
-        for wallpaper_id in self.current_wallpapers.values():
+        for wallpaper_id in self.monitor_manager.current_wallpapers.values():
             str_wallpaper_id = str(wallpaper_id)
             if str_wallpaper_id not in self.wallpaper_properties:
                 print(f"Adding default properties for newly active wallpaper: {str_wallpaper_id}")
@@ -311,7 +320,14 @@ class WallpaperSelectorApp(Gtk.Application):
                 self.apply_wallpaper(wallpaper_id=str(wid), monitor=monitor)
 
     def on_monitor_changed(self, combo):
-        self.current_monitor = combo.get_active_text()
+        model = combo.get_model()
+        active_iter = combo.get_active_iter()
+
+        if active_iter is not None:
+            self.current_monitor = model[active_iter][0]   
+        else:
+            printf("Error selecting monitor, setting to None")
+            self.current_monitor = None
         
     def on_refresh_clicked(self, button):
         """Handle refresh button click: reload wallpapers and update grid"""
@@ -323,6 +339,30 @@ class WallpaperSelectorApp(Gtk.Application):
         # Re-apply the current filters to update the grid view
         self.apply_filters()
         print("Wallpapers refreshed.")
+        
+    def on_select_monitors_clicked(self, button):
+        """Open the monitor selection dialog"""
+        from ui.dialogs import MonitorSelectionDialog
+        dialog = MonitorSelectionDialog(
+            self.win, 
+            self.monitor_manager, 
+            self.data_manager, 
+            self.selected_wallpaper_id
+        )
+        dialog.connect('response', self.on_monitor_dialog_response)
+        dialog.present()
+
+    def on_monitor_dialog_response(self, dialog, response):
+        if response == Gtk.ResponseType.OK:
+            # Store the selected monitors for later use
+            self.selected_monitors = dialog.selected_monitors
+            print(f"Selected monitors: {self.selected_monitors}")
+            
+            # Apply the wallpaper to selected monitors
+            if self.selected_wallpaper_id:
+                for monitor_name in self.selected_monitors:
+                    self.apply_wallpaper(monitor=monitor_name)
+        dialog.destroy()
         
     def on_stop_clicked(self, button):
         self.monitor_manager.stop_all_wallpapers()

@@ -190,7 +190,7 @@ class SceneViewerWindow(Gtk.ApplicationWindow):
 class SceneViewerApp(Gtk.Application):
     def __init__(self, scene_dir, monitor_name, *args, **kwargs):
         clean_id = ''.join(filter(str.isalnum, os.path.basename(scene_dir)))
-        super().__init__(*args, application_id=f"dev.gemini.hyprpaperwe.scene.{clean_id}", **kwargs)
+        super().__init__(*args, application_id=f"dev.hyprwpe.scene.{clean_id}", **kwargs)
         self.scene_dir = scene_dir
         self.monitor_name = monitor_name
         self.win = None

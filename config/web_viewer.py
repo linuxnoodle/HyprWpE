@@ -66,8 +66,7 @@ class WebWallpaperWindow(Gtk.ApplicationWindow):
 
 class WebWallpaperApp(Gtk.Application):
     def __init__(self, uri, monitor_name, *args, **kwargs):
-        # Use a static ID so it can be targeted by a layerrule for effects if desired
-        super().__init__(*args, application_id="dev.gemini.hyprpaperwe.viewer", **kwargs)
+        super().__init__(*args, application_id="dev.hyprwpe.viewer", **kwargs)
         self.uri = uri
         self.monitor_name = monitor_name
         self.win = None
@@ -79,12 +78,12 @@ class WebWallpaperApp(Gtk.Application):
         self.win.present()
 
 if __name__ == "__main__":
-    if not (2 <= len(sys.argv) <= 3):
-        print(f"Usage: {sys.argv[0]} <html_file_path> [monitor_name]", file=sys.stderr)
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <html_file_path> <monitor_name>", file=sys.stderr)
         sys.exit(1)
 
     html_path = sys.argv[1]
-    monitor_name = sys.argv[2] if len(sys.argv) == 3 else None
+    monitor_name = sys.argv[2] if len(sys.argv) >= 3 else None
     
     uri = Gio.File.new_for_path(html_path).get_uri()
     app = WebWallpaperApp(uri, monitor_name)
