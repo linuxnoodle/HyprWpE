@@ -286,7 +286,6 @@ class WallpaperSelectorApp(Gtk.Application):
         self.config_manager.save_config(config_to_save)
         print(f"Wallpaper setup saved to {YAML_FILE}")
         print("Updating and saving properties for all active wallpapers...")
-        # Update current_wallpapers from MonitorManager
         for wallpaper_id in self.current_wallpapers.values():
             str_wallpaper_id = str(wallpaper_id)
             if str_wallpaper_id not in self.wallpaper_properties:

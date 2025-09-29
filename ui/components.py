@@ -1,6 +1,7 @@
 import gi
 import os
-from gi.repository import Gtk, Gdk
+gi.require_version('GdkPixbuf', '2.0')
+from gi.repository import Gtk, Gdk, GdkPixbuf
 from config.constants import WALLPAPER_WIDGET_WIDTH, WALLPAPER_WIDGET_HEIGHT, IMAGE_FRAME_WIDTH, IMAGE_FRAME_HEIGHT
 
 class WallpaperWidget:
@@ -26,12 +27,53 @@ class WallpaperWidget:
         
         if os.path.exists(wallpaper.preview_path):
             try:
-                image.set_from_file(wallpaper.preview_path)
-            except Exception as e:
-                print(f"Error loading image {wallpaper.preview_path}: {e}")
+                # Check if file is a GIF and handle it as animation
+                if wallpaper.preview_path.lower().endswith('.gif'):
+                    try:
+                        pixbuf_animation = GdkPixbuf.PixbufAnimation.new_from_file(wallpaper.preview_path)
+                        # Try different methods for different GTK versions
+                        if hasattr(image, 'set_from_animation'):
+                            image.set_from_animation(pixbuf_animation)
+                        elif hasattr(image, 'set_pixbuf_animation'):
+                            image.set_pixbuf_animation(pixbuf_animation)
+                        else:
+                            # Fallback: get first frame as static pixbuf
+                            pixbuf = pixbuf_animation.get_static_image()
+                            image.set_from_pixbuf(pixbuf)
+                    except Exception:
+                        # Fallback to static image
+                        image.set_from_file(wallpaper.preview_path)
+                else:
+                    image.set_from_file(wallpaper.preview_path)
+            except Exception:
                 WallpaperWidget._set_missing_image(image)
         else:
-            WallpaperWidget._set_missing_image(image)
+            # Check for preview.gif as fallback for scene wallpapers
+            preview_gif_path = os.path.join(os.path.dirname(wallpaper.preview_path), "preview.gif")
+            if wallpaper.type.lower() == "scene" and os.path.exists(preview_gif_path):
+                try:
+                    # Handle preview.gif as animation
+                    if preview_gif_path.lower().endswith('.gif'):
+                        try:
+                            pixbuf_animation = GdkPixbuf.PixbufAnimation.new_from_file(preview_gif_path)
+                            # Try different methods for different GTK versions
+                            if hasattr(image, 'set_from_animation'):
+                                image.set_from_animation(pixbuf_animation)
+                            elif hasattr(image, 'set_pixbuf_animation'):
+                                image.set_pixbuf_animation(pixbuf_animation)
+                            else:
+                                # Fallback: get first frame as static pixbuf
+                                pixbuf = pixbuf_animation.get_static_image()
+                                image.set_from_pixbuf(pixbuf)
+                        except Exception:
+                            # Fallback to static image
+                            image.set_from_file(preview_gif_path)
+                    else:
+                        image.set_from_file(preview_gif_path)
+                except Exception:
+                    WallpaperWidget._set_missing_image(image)
+            else:
+                WallpaperWidget._set_missing_image(image)
         
         image_frame.set_child(image)
         main_box.append(image_frame)
