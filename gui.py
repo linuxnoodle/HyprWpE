@@ -281,19 +281,19 @@ class WallpaperSelectorApp(Gtk.Application):
 
 
     def on_save_setup_clicked(self, button):
+        self.current_wallpapers = self.monitor_manager.current_wallpapers
         config_to_save = {'wallpaper_dir': self.wallpaper_dir, 'wallpapers': self.current_wallpapers}
         self.config_manager.save_config(config_to_save)
         print(f"Wallpaper setup saved to {YAML_FILE}")
         print("Updating and saving properties for all active wallpapers...")
         # Update current_wallpapers from MonitorManager
-        self.current_wallpapers = self.monitor_manager.current_wallpapers
         for wallpaper_id in self.current_wallpapers.values():
             str_wallpaper_id = str(wallpaper_id)
             if str_wallpaper_id not in self.wallpaper_properties:
                 print(f"Adding default properties for newly active wallpaper: {str_wallpaper_id}")
                 self.wallpaper_properties[str_wallpaper_id] = {'audio': False, 'speed': 1.0, 'scale': 'Cover'}
         self.config_manager.save_properties(self.wallpaper_properties)
-            
+
     def apply_config_from_file(self, config_path):
         self.on_stop_clicked(None)
         import time; time.sleep(0.5)
@@ -326,6 +326,15 @@ class WallpaperSelectorApp(Gtk.Application):
         
     def on_stop_clicked(self, button):
         self.monitor_manager.stop_all_wallpapers()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="A GTK selector for mpvpaper-WE.")
+    parser.add_argument('--load-config', dest='config_file', metavar='FILE_PATH', help='Load and apply a specific config YAML on startup.')
+    args = parser.parse_args()
+    app = WallpaperSelectorApp(config_file_to_load=args.config_file)
+    app.run(sys.argv)
+
 
     """
     def build_wallpaper_grid_section(self):
@@ -366,12 +375,3 @@ class WallpaperSelectorApp(Gtk.Application):
         
         return scrolled_window
     """
-
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="A GTK selector for mpvpaper-WE.")
-    parser.add_argument('--load-config', dest='config_file', metavar='FILE_PATH', help='Load and apply a specific config YAML on startup.')
-    args = parser.parse_args()
-    app = WallpaperSelectorApp(config_file_to_load=args.config_file)
-    app.run(sys.argv)
