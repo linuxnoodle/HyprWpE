@@ -39,7 +39,7 @@ stop_wallpaper() {
         fi
         rm -f "$PID_FILE" "$LOCK_FILE"
     fi
-    local lingering_pids=$(pgrep -f "(mpvpaper|web_viewer.py).*$MONITOR")
+    local lingering_pids=$(pgrep -f "(mpvpaper|web_viewer.py|linux-wallpaperengine).*$MONITOR")
     [ -n "$lingering_pids" ] && kill -9 $lingering_pids
 }
 
@@ -47,7 +47,7 @@ stop_all_wallpapers() {
     echo "Stopping all wallpaper processes..."
     pkill -f "mpvpaper"
     pkill -f "web_viewer.py"
-    pkill -f "scene_viewer.py"
+    pkill -f "linux-wallpaperengine"
     rm -f /tmp/HyprWpE-*
     echo "All active wallpapers have been stopped."
 }
@@ -103,13 +103,20 @@ set_wallpaper() {
         fi
     fi
 
-    # Unpacking logic (only for video/web, scenes are typically not packed)
+    # Unpacking logic (for video/web)
     if [ "$type" != "scene" ] && [ ! -f "$wallpaper_path/$file" ]; then
         local pkg_file=$(find "$wallpaper_path" -name "*.pkg" -print -quit)
-        if [ -z "$pkg_file" ]; then echo "Error: .pkg not found"; return 1; fi
-        content_root="$TMP_DIR/$wallpaper_id"
-        python "$(dirname "$0")/unpacker.py" "$pkg_file" "$content_root"
-        if [ ! -f "$content_root/project.json" ]; then echo "Error: Unpack failed"; return 1; fi
+        if [ -n "$pkg_file" ]; then
+            content_root="$TMP_DIR/$wallpaper_id"
+            python "$(dirname "$0")/unpacker.py" "$pkg_file" "$content_root"
+            # Copy project.json if it was not in the archive
+            if [ ! -f "$content_root/project.json" ] && [ -f "$wallpaper_path/project.json" ]; then
+                cp "$wallpaper_path/project.json" "$content_root/"
+            fi
+            if [ ! -f "$content_root/project.json" ] && [ ! -f "$content_root/$file" ]; then
+                echo "Error: Unpack failed"; return 1;
+            fi
+        fi
     fi
 
     if [ "$type" == "video" ]; then
@@ -126,8 +133,30 @@ set_wallpaper() {
         write_pid $!
 
     elif [ "$type" == "scene" ]; then
-        echo "[$MONITOR] Launching scene_viewer for $wallpaper_path"
-        LD_PRELOAD=/usr/lib/libgtk4-layer-shell.so python "$(dirname "$0")/scene_viewer.py" "$wallpaper_path" "$MONITOR" &
+        echo "[$MONITOR] Launching linux-wallpaperengine for $content_root"
+        
+        local silent_arg="--silent"
+        if [ "$audio" == "true" ]; then silent_arg=""; fi
+        
+        local scene_opts_array=()
+        local props_file="$(eval echo $PROPERTIES_FILE)"
+        if [ -f "$props_file" ]; then
+            echo "[$MONITOR] Parsing scene properties from $props_file for $wallpaper_id"
+            local scene_keys=$(yq -r ".[\"$wallpaper_id\"].scene_props | keys | .[]" "$props_file" 2>/dev/null)
+            echo "[$MONITOR] Extracted scene keys: $scene_keys"
+            if [ -n "$scene_keys" ] && [ "$scene_keys" != "null" ]; then
+                for k in $scene_keys; do
+                    local v=$(yq -r ".[\"$wallpaper_id\"].scene_props.[\"$k\"]" "$props_file" 2>/dev/null)
+                    # Convert json true/false to 1/0 that linux-wallpaperengine JS expects
+                    if [ "$v" = "true" ]; then v="1"; fi
+                    if [ "$v" = "false" ]; then v="0"; fi
+                    scene_opts_array+=("--set-property" "$k=$v")
+                done
+            fi
+        fi
+        
+        echo "Running with: ./linux-wallpaperengine --screen-root $MONITOR --bg $content_root --fps 60 --no-fullscreen-pause $silent_arg ${scene_opts_array[*]}"
+        linux-wallpaperengine --screen-root "$MONITOR" --bg "$content_root" --fps 60 --no-fullscreen-pause $silent_arg "${scene_opts_array[@]}" >> "$HOME/.config/HyprWpE/we_${MONITOR}.log" 2>&1 &
         write_pid $!
     else
         echo "[$MONITOR] Unsupported wallpaper type: $type"

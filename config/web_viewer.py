@@ -67,7 +67,12 @@ class WebWallpaperWindow(Gtk.ApplicationWindow):
 class WebWallpaperApp(Gtk.Application):
     def __init__(self, uri, monitor_name, *args, **kwargs):
         # Use a static ID so it can be targeted by a layerrule for effects if desired
-        super().__init__(*args, application_id="dev.gemini.hyprpaperwe.viewer", **kwargs)
+        super().__init__(
+            *args, 
+            application_id="dev.gemini.hyprpaperwe.viewer", 
+            flags=Gio.ApplicationFlags.NON_UNIQUE,
+            **kwargs
+        )
         self.uri = uri
         self.monitor_name = monitor_name
         self.win = None
