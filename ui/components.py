@@ -150,6 +150,10 @@ class PropertyControls:
         return Gtk.CheckButton(label="Enable Audio")
 
     @staticmethod
+    def create_span_toggle() -> Gtk.CheckButton:
+        return Gtk.CheckButton(label="Stretch across all monitors")
+
+    @staticmethod
     def create_speed_control() -> Gtk.Box:
         speed_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6, valign=Gtk.Align.CENTER)
         speed_box.append(Gtk.Label(label="Speed:"))

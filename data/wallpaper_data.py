@@ -34,12 +34,20 @@ class WallpaperDataManager:
                     title = data.get('title', 'No Title')
                     wp_type = data.get('type', 'unknown').lower()
                     preview_file = data.get('preview', 'preview.gif')
+                    preview_path = os.path.join(wallpaper_path, preview_file)
+                    
+                    if not os.path.exists(preview_path):
+                        for p in ['preview.jpg', 'preview.png', 'preview.gif', 'preview.jpeg']:
+                            alt_path = os.path.join(wallpaper_path, p)
+                            if os.path.exists(alt_path):
+                                preview_path = alt_path
+                                break
                     
                     wallpaper_data = Wallpaper(
                         id=wallpaper_id,
                         title=title,
                         type=wp_type,
-                        preview_path=os.path.join(wallpaper_path, preview_file),
+                        preview_path=preview_path,
                         title_lower=title.lower(),
                     )
                     
