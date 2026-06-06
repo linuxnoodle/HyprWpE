@@ -174,7 +174,8 @@ set_wallpaper() {
         # If we_scale isn't set (e.g. fallback), default to fill
         we_scale=${we_scale:-fill}
         
-        local engine_bin="$(dirname "$(dirname "$0")")/linux-wallpaperengine/build/output/linux-wallpaperengine"
+        # Use the system-wide installed linux-wallpaperengine instead of a local build folder
+        local engine_bin="linux-wallpaperengine"
         echo "Running with: $engine_bin $span_arg --scaling $we_scale --bg $content_root --fps 60 --no-fullscreen-pause $silent_arg ${scene_opts_array[*]}"
         eval "$engine_bin $span_arg --scaling $we_scale --bg \"$content_root\" --fps 60 --no-fullscreen-pause $silent_arg \"\${scene_opts_array[@]}\" >> \"$HOME/.config/HyprWpE/we_${MONITOR}.log\" 2>&1 &"
         write_pid $!
