@@ -102,7 +102,8 @@ class WallpaperSelectorApp(Gtk.Application):
             'on_monitor_changed': self.on_monitor_changed,
             'on_filter_toggled': self.on_filter_toggled,
             'hide_sidebar': self.hide_sidebar,
-            'on_apply_changes_clicked': self.on_apply_changes_clicked
+            'on_apply_changes_clicked': self.on_apply_changes_clicked,
+            'on_open_folder_clicked': self.on_open_folder_clicked
         }
         
         # Create UI Builder and build the main UI
@@ -117,14 +118,17 @@ class WallpaperSelectorApp(Gtk.Application):
         # Get sidebar widgets
         sidebar_widgets = self.ui_builder.get_sidebar_widgets()
         self.sidebar_image = sidebar_widgets['image']
+        self.folder_id_label = sidebar_widgets['folder_id_label']
         self.audio_check = sidebar_widgets['audio_check']
+        self.span_check = sidebar_widgets['span_check']
         self.speed_spin = sidebar_widgets['speed_spin']
         self.scale_combo = sidebar_widgets['scale_combo']
         self.dynamic_props_box = sidebar_widgets['dynamic_props_box']
         
-        # Setup property signal handlers
+        # Connect property handlers
         self.property_signal_handlers = {}
         self.property_signal_handlers['audio'] = self.audio_check.connect('toggled', self.on_property_changed)
+        self.property_signal_handlers['span'] = self.span_check.connect('toggled', self.on_property_changed)
         self.property_signal_handlers['speed'] = self.speed_spin.connect('value-changed', self.on_property_changed)
         self.property_signal_handlers['scale'] = self.scale_combo.connect('changed', self.on_property_changed)
         
@@ -148,28 +152,7 @@ class WallpaperSelectorApp(Gtk.Application):
         self.filtered_wallpapers = self.data_manager.apply_filters(self.search_term, self.type_filters)
         self.grid_manager.apply_filters(self.filtered_wallpapers)
 
-    def populate_sidebar_values(self):
-        if not self.selected_wallpaper_id: return
-        wp_data = self.data_manager.get_wallpaper_by_id(self.selected_wallpaper_id)
-        if not wp_data: return
 
-        if os.path.exists(wp_data.preview_path):
-            self.sidebar_image.set_filename(wp_data.preview_path)
-        else:
-            icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
-            paintable = icon_theme.lookup_icon("image-missing-symbolic", None, 128, 1, Gtk.TextDirection.NONE, None)
-            self.sidebar_image.set_paintable(paintable)
-        self.audio_check.handler_block(self.property_signal_handlers['audio'])
-        self.speed_spin.handler_block(self.property_signal_handlers['speed'])
-        self.scale_combo.handler_block(self.property_signal_handlers['scale'])
-        props = self.wallpaper_properties.get(self.selected_wallpaper_id, {})
-        self.prop_widgets_box.set_sensitive(True)
-        self.audio_check.set_active(props.get('audio', False))
-        self.speed_spin.set_value(props.get('speed', 1.0))
-        self.scale_combo.set_active(["Cover", "Contain", "Fill"].index(props.get('scale', 'Cover')))
-        self.audio_check.handler_unblock(self.property_signal_handlers['audio'])
-        self.speed_spin.handler_unblock(self.property_signal_handlers['speed'])
-        self.scale_combo.handler_unblock(self.property_signal_handlers['scale'])
 
     def on_wallpaper_clicked(self, button, wallpaper_id):
         """Handle wallpaper selection"""
@@ -177,9 +160,7 @@ class WallpaperSelectorApp(Gtk.Application):
         self.selected_wallpaper_id = wallpaper_id
         
         self.sidebar.set_visible(True)
-        current_width = self.win.get_width()
-        initial_position = int(current_width * 3 / 4)
-        self.ui_builder.set_paned_position(initial_position)
+        # GTK will naturally layout based on size_request without resetting paned position
         
         self.populate_sidebar_values()
         self.apply_wallpaper()
@@ -227,20 +208,20 @@ class WallpaperSelectorApp(Gtk.Application):
         wp_data = self.data_manager.get_wallpaper_by_id(self.selected_wallpaper_id)
         if not wp_data: return
 
+        self.folder_id_label.set_text(f"ID: {self.selected_wallpaper_id}")
+
         if os.path.exists(wp_data.preview_path):
             try:
-                from gi.repository import GdkPixbuf
-                if wp_data.preview_path.lower().endswith('.gif'):
-                    pixbuf_anim = GdkPixbuf.PixbufAnimation.new_from_file(wp_data.preview_path)
-                    self.sidebar_image.set_from_animation(pixbuf_anim)
-                else:
-                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(wp_data.preview_path, 350, 250, True)
-                    self.sidebar_image.set_from_pixbuf(pixbuf)
+                self.sidebar_image.set_filename(wp_data.preview_path)
             except Exception as e:
                 print(f"Error loading preview image: {e}")
-                self.sidebar_image.set_from_icon_name("image-missing-symbolic")
+                icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+                paintable = icon_theme.lookup_icon("image-missing-symbolic", None, 128, 1, Gtk.TextDirection.NONE, None)
+                self.sidebar_image.set_paintable(paintable)
         else:
-            self.sidebar_image.set_from_icon_name("image-missing-symbolic")
+            icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+            paintable = icon_theme.lookup_icon("image-missing-symbolic", None, 128, 1, Gtk.TextDirection.NONE, None)
+            self.sidebar_image.set_paintable(paintable)
 
         # Clear existing dynamic widgets from the properties box
         # The first 4 children are: audio_check, speed_box, scale_box, apply_button
@@ -262,14 +243,30 @@ class WallpaperSelectorApp(Gtk.Application):
                 child = next_child
 
         self.audio_check.handler_block(self.property_signal_handlers['audio'])
+        self.span_check.handler_block(self.property_signal_handlers['span'])
         self.speed_spin.handler_block(self.property_signal_handlers['speed'])
         self.scale_combo.handler_block(self.property_signal_handlers['scale'])
+
+        # Update static properties
         props = self.wallpaper_properties.get(self.selected_wallpaper_id, {})
         self.prop_widgets_box.set_sensitive(True)
         self.audio_check.set_active(props.get('audio', False))
+        self.span_check.set_active(props.get('span', False))
+        
+        # Only show span option when All Monitors is selected
+        self.span_check.set_visible(self.current_monitor == "All Monitors")
+
         self.speed_spin.set_value(props.get('speed', 1.0))
-        self.scale_combo.set_active(["Cover", "Contain", "Fill"].index(props.get('scale', 'Cover')))
+        
+        # Ensure scale is correctly typed, it can be None or an int sometimes?
+        scale_val = props.get('scale', 'Cover')
+        if not isinstance(scale_val, str): scale_val = 'Cover'
+        
+        scale_map = {'cover': 0, 'contain': 1, 'fill': 2}
+        self.scale_combo.set_active(scale_map.get(scale_val.lower(), 0))
+
         self.audio_check.handler_unblock(self.property_signal_handlers['audio'])
+        self.span_check.handler_unblock(self.property_signal_handlers['span'])
         self.speed_spin.handler_unblock(self.property_signal_handlers['speed'])
         self.scale_combo.handler_unblock(self.property_signal_handlers['scale'])
 
@@ -332,7 +329,9 @@ class WallpaperSelectorApp(Gtk.Application):
         wid = self.selected_wallpaper_id
         if not wid: return
         if wid not in self.wallpaper_properties: self.wallpaper_properties[wid] = {}
-        if isinstance(widget, Gtk.CheckButton): self.wallpaper_properties[wid]['audio'] = widget.get_active()
+        if isinstance(widget, Gtk.CheckButton):
+            if widget == self.audio_check: self.wallpaper_properties[wid]['audio'] = widget.get_active()
+            elif widget == self.span_check: self.wallpaper_properties[wid]['span'] = widget.get_active()
         elif isinstance(widget, Gtk.SpinButton): self.wallpaper_properties[wid]['speed'] = widget.get_value()
         elif isinstance(widget, Gtk.ComboBoxText): self.wallpaper_properties[wid]['scale'] = widget.get_active_text()
         self.config_manager.save_properties(self.wallpaper_properties)
@@ -342,17 +341,24 @@ class WallpaperSelectorApp(Gtk.Application):
         if not wid: return
         if wid not in self.wallpaper_properties: self.wallpaper_properties[wid] = {}
         if 'scene_props' not in self.wallpaper_properties[wid]:
-            self.wallpaper_properties[wid]['scene_props'] = {}
-            
+            self.wallpaper_properties[str(self.selected_wallpaper_id)] = {
+                'audio': self.audio_check.get_active(),
+                'span': self.span_check.get_active(),
+                'speed': self.speed_spin.get_value(),
+                'scale': ['Cover', 'Contain', 'Fill'][self.scale_combo.get_active()],
+                'scene_props': {}
+            }
+        
+        scene_props = self.wallpaper_properties[wid]['scene_props']
         if prop_type == 'bool':
-            self.wallpaper_properties[wid]['scene_props'][prop_key] = widget.get_active()
+            scene_props[prop_key] = widget.get_active()
         elif prop_type == 'slider':
-            self.wallpaper_properties[wid]['scene_props'][prop_key] = widget.get_value()
+            scene_props[prop_key] = widget.get_value()
         elif prop_type == 'combo':
-            self.wallpaper_properties[wid]['scene_props'][prop_key] = widget.get_active_id() # active_id is what we need. Wait, combo text appends value as id. Let's use get_active_id
+            scene_props[prop_key] = widget.get_active_id() # active_id is what we need. Wait, combo text appends value as id. Let's use get_active_id
         elif prop_type == 'color':
             rgba = widget.get_rgba()
-            self.wallpaper_properties[wid]['scene_props'][prop_key] = f"{rgba.red:.3f} {rgba.green:.3f} {rgba.blue:.3f}"
+            scene_props[prop_key] = f"{rgba.red:.3f} {rgba.green:.3f} {rgba.blue:.3f}"
             
         self.config_manager.save_properties(self.wallpaper_properties)
 
@@ -388,6 +394,12 @@ class WallpaperSelectorApp(Gtk.Application):
         except Exception as e:
             print(f"Error launching wallpaper script: {e}")
 
+    def on_open_folder_clicked(self, button):
+        if not self.selected_wallpaper_id: return
+        folder_path = os.path.join(self.wallpaper_dir, self.selected_wallpaper_id)
+        if os.path.exists(folder_path):
+            # Try xdg-open to open file manager
+            subprocess.Popen(['xdg-open', folder_path])
 
     def on_save_setup_clicked(self, button):
         self.current_wallpapers = self.monitor_manager.current_wallpapers
@@ -420,6 +432,8 @@ class WallpaperSelectorApp(Gtk.Application):
 
     def on_monitor_changed(self, combo):
         self.current_monitor = combo.get_active_text()
+        if hasattr(self, 'selected_wallpaper_id') and self.selected_wallpaper_id:
+            self.populate_sidebar_values()
         
     def on_refresh_clicked(self, button):
         """Handle refresh button click: reload wallpapers and update grid"""

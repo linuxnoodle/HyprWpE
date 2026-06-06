@@ -30,10 +30,19 @@ class MonitorManager:
         env['MPV_EXTRA_OPTS'] = " ".join(mpv_opts)
         try:
             targets = self.monitors if monitor == "All Monitors" else [monitor]
-            for m in targets:
-                print(f"Applying '{wallpaper_type}' wallpaper ID: {wallpaper_id} to monitor: {m}")
-                subprocess.Popen([SCRIPT_PATH, str(wallpaper_id), m], env=env)
-                self.current_wallpapers[m] = int(wallpaper_id)
+            is_span = properties.get('span', False)
+            if is_span and monitor == "All Monitors" and len(targets) > 1:
+                m_str = ",".join(targets)
+                print(f"Applying spanned '{wallpaper_type}' wallpaper ID: {wallpaper_id} to monitors: {m_str}")
+                subprocess.Popen([SCRIPT_PATH, str(wallpaper_id), m_str], env=env)
+                for m in targets:
+                    self.current_wallpapers[m] = int(wallpaper_id)
+                self.current_wallpapers[m_str] = int(wallpaper_id)
+            else:
+                for m in targets:
+                    print(f"Applying '{wallpaper_type}' wallpaper ID: {wallpaper_id} to monitor: {m}")
+                    subprocess.Popen([SCRIPT_PATH, str(wallpaper_id), m], env=env)
+                    self.current_wallpapers[m] = int(wallpaper_id)
         except Exception as e:
             print(f"Error launching wallpaper script: {e}")
 

@@ -93,10 +93,18 @@ set_wallpaper() {
             if [ "$audio" != "true" ]; then opts_array+=("--no-audio"); fi
             
             scale=$(echo "$scale" | tr '[:upper:]' '[:lower:]')
+            
+            # For mpvpaper
             if [ "$scale" = "cover" ]; then opts_array+=("--panscan=1.0"); fi
             if [ "$scale" = "fill" ]; then opts_array+=("--video-aspect-method=stretch"); fi
             
             extra_opts=$(IFS=' '; echo "${opts_array[*]}")
+            
+            # For linux-wallpaperengine
+            local we_scale="fill"
+            if [ "$scale" = "cover" ]; then we_scale="fill"; fi
+            if [ "$scale" = "contain" ]; then we_scale="fit"; fi
+            if [ "$scale" = "fill" ]; then we_scale="stretch"; fi
         else
             # Fallback if properties file doesn't exist
             extra_opts="--no-audio --speed=1.0"
@@ -135,6 +143,9 @@ set_wallpaper() {
     elif [ "$type" == "scene" ]; then
         echo "[$MONITOR] Launching linux-wallpaperengine for $content_root"
         
+        export HYPRWPE_OFFSET_X=$(hyprctl monitors -j | jq -r ".[] | select(.name==\"$MONITOR\") | .x")
+        export HYPRWPE_OFFSET_Y=$(hyprctl monitors -j | jq -r ".[] | select(.name==\"$MONITOR\") | .y")
+        
         local silent_arg="--silent"
         if [ "$audio" == "true" ]; then silent_arg=""; fi
         
@@ -155,8 +166,17 @@ set_wallpaper() {
             fi
         fi
         
-        echo "Running with: ./linux-wallpaperengine --screen-root $MONITOR --bg $content_root --fps 60 --no-fullscreen-pause $silent_arg ${scene_opts_array[*]}"
-        linux-wallpaperengine --screen-root "$MONITOR" --bg "$content_root" --fps 60 --no-fullscreen-pause $silent_arg "${scene_opts_array[@]}" >> "$HOME/.config/HyprWpE/we_${MONITOR}.log" 2>&1 &
+        local span_arg="--screen-root \"$MONITOR\""
+        if [[ "$MONITOR" == *","* ]]; then
+            span_arg="--screen-span \"$MONITOR\""
+        fi
+        
+        # If we_scale isn't set (e.g. fallback), default to fill
+        we_scale=${we_scale:-fill}
+        
+        local engine_bin="$(dirname "$(dirname "$0")")/linux-wallpaperengine/build/output/linux-wallpaperengine"
+        echo "Running with: $engine_bin $span_arg --scaling $we_scale --bg $content_root --fps 60 --no-fullscreen-pause $silent_arg ${scene_opts_array[*]}"
+        eval "$engine_bin $span_arg --scaling $we_scale --bg \"$content_root\" --fps 60 --no-fullscreen-pause $silent_arg \"\${scene_opts_array[@]}\" >> \"$HOME/.config/HyprWpE/we_${MONITOR}.log\" 2>&1 &"
         write_pid $!
     else
         echo "[$MONITOR] Unsupported wallpaper type: $type"

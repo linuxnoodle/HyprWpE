@@ -1,7 +1,7 @@
 import os
 import json
 
-workshop_dir = "/home/scushi/.steam/steam/steamapps/workshop/content/431960"
+workshop_dir = os.path.expanduser("~/.steam/steam/steamapps/workshop/content/431960")
 
 def patch_wallpapers():
     count = 0

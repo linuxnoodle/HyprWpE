@@ -147,7 +147,7 @@ class UIBuilder:
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10,
                           margin_top=10, margin_bottom=10,
                           margin_start=10, margin_end=10)
-        sidebar.set_size_request(350, -1)
+        sidebar.set_size_request(450, -1)
 
         sidebar_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         sidebar_title = Gtk.Label(label="<big><b>Properties</b></big>",
@@ -159,10 +159,23 @@ class UIBuilder:
         sidebar_header.append(close_button)
         sidebar.append(sidebar_header)
 
-        sidebar_image = Gtk.Image()
-        sidebar_image.set_pixel_size(250)
+        sidebar_image = Gtk.Picture()
+        sidebar_image.set_can_shrink(True)
+        sidebar_image.set_content_fit(Gtk.ContentFit.CONTAIN)
+        sidebar_image.set_size_request(-1, 200)
         sidebar_image.set_margin_bottom(10)
         sidebar.append(sidebar_image)
+
+        folder_info_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        folder_id_label = Gtk.Label(label="", selectable=True, hexpand=True, halign=Gtk.Align.START)
+        folder_info_box.append(folder_id_label)
+        
+        open_folder_btn = Gtk.Button.new_from_icon_name("folder-open-symbolic")
+        open_folder_btn.set_tooltip_text("Open Wallpaper Folder")
+        open_folder_btn.connect("clicked", self.callbacks.get('on_open_folder_clicked', lambda x: None))
+        folder_info_box.append(open_folder_btn)
+        
+        sidebar.append(folder_info_box)
 
         prop_widgets_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10,
                                    sensitive=False)
@@ -170,6 +183,9 @@ class UIBuilder:
 
         audio_check = PropertyControls.create_audio_toggle()
         prop_widgets_box.append(audio_check)
+
+        span_check = PropertyControls.create_span_toggle()
+        prop_widgets_box.append(span_check)
 
         speed_box = PropertyControls.create_speed_control()
         # Need to get the spin button from the box
@@ -187,7 +203,9 @@ class UIBuilder:
         
         # Store references to widgets that need to be accessed later
         self.sidebar_image = sidebar_image
+        self.folder_id_label = folder_id_label
         self.audio_check = audio_check
+        self.span_check = span_check
         self.speed_spin = speed_spin
         self.scale_combo = scale_combo
         self.prop_widgets_box = prop_widgets_box
@@ -240,7 +258,9 @@ class UIBuilder:
         """Get references to the sidebar widgets"""
         return {
             'image': self.sidebar_image,
+            'folder_id_label': self.folder_id_label,
             'audio_check': self.audio_check,
+            'span_check': self.span_check,
             'speed_spin': self.speed_spin,
             'scale_combo': self.scale_combo,
             'prop_widgets_box': self.prop_widgets_box,

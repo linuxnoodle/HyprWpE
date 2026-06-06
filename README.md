@@ -53,7 +53,7 @@ This project provides a set of scripts and a GTK4 graphical interface to find, c
   - **Hyprland:** This is designed specifically for the Hyprland Wayland compositor.
   - **Wallpaper Engine:** You must own Wallpaper Engine on Steam and have wallpapers downloaded.
   - **Python 3**
-  - **Dependencies:** You will need the following packages: `mpvpaper`, `jq`, `yq`, `gtk4`, `webkitgtk-6.0`, `python-gobject`, `gtk4-layer-shell`, and `python-pyglet`.
+  - **Dependencies:** You will need the following packages: `mpvpaper`, `jq`, `yq`, `gtk4`, `webkitgtk-6.0`, `python-gobject`, `gtk4-layer-shell`, `cmake`, `gcc`, `ninja`, `pkgconf`, `wayland`, `wayland-protocols`, `egl-wayland`, `glew`, `glm`, `sdl2`, `mpv`, `ffmpeg`, `lz4`.
 
 -----
 
@@ -69,17 +69,20 @@ This project provides a set of scripts and a GTK4 graphical interface to find, c
 2.  **Install dependencies (example for Arch Linux):**
 
     ```bash
-    sudo pacman -S mpvpaper yq python-gobject python-yaml webkitgtk-6.0 gtk4 gtk4-layer-shell
+    sudo pacman -S mpvpaper jq yq python-gobject python-yaml webkitgtk-6.0 gtk4 gtk4-layer-shell cmake gcc ninja pkgconf wayland wayland-protocols egl-wayland glew glm sdl2 mpv ffmpeg lz4
     # or using an aur helper like paru
-    paru -S mpvpaper yq python-gobject python-yaml webkitgtk-6.0 gtk4 gtk4-layer-shell
+    paru -S mpvpaper jq yq python-gobject python-yaml webkitgtk-6.0 gtk4 gtk4-layer-shell cmake gcc ninja pkgconf wayland wayland-protocols egl-wayland glew glm sdl2 mpv ffmpeg lz4
     ```
 
     *Note: The `yq` required by this project is the Python implementation. If your package manager provides multiple, ensure you install the one based on Python, not the one written in Go.*
 
-3.  **Make the main script executable:**
+3.  **Run the installation script:**
 
+    This will automatically download and patch `linux-wallpaperengine` to support native 2D/3D scene wallpapers.
+    
     ```bash
-    chmod +x HyprWpE.sh
+    chmod +x install.sh
+    ./install.sh
     ```
 -----
 
