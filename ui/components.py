@@ -169,3 +169,72 @@ class PropertyControls:
         scale_combo.set_hexpand(True)
         scale_box.append(scale_combo)
         return scale_box
+
+    @staticmethod
+    def create_dynamic_bool(label_text: str, default_value: bool) -> Gtk.CheckButton:
+        checkbox = Gtk.CheckButton(label=label_text)
+        checkbox.set_active(default_value)
+        return checkbox
+
+    @staticmethod
+    def create_dynamic_slider(label_text: str, min_val: float, max_val: float, step: float, default_value: float) -> tuple:
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6, valign=Gtk.Align.CENTER)
+        label = Gtk.Label(label=label_text)
+        label.set_xalign(0)
+        box.append(label)
+        
+        # Determine digits based on step
+        digits = 0
+        if step < 1:
+            digits = len(str(step).split('.')[-1])
+            
+        adjustment = Gtk.Adjustment(value=default_value, lower=min_val, upper=max_val, step_increment=step, page_increment=step * 10)
+        scale = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL, adjustment=adjustment)
+        scale.set_digits(digits)
+        scale.set_draw_value(True)
+        scale.set_hexpand(True)
+        box.append(scale)
+        return box, scale
+
+    @staticmethod
+    def create_dynamic_combo(label_text: str, options: list, default_value: str) -> tuple:
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6, valign=Gtk.Align.CENTER)
+        label = Gtk.Label(label=label_text)
+        label.set_xalign(0)
+        box.append(label)
+        
+        combo = Gtk.ComboBoxText()
+        active_index = 0
+        for i, opt in enumerate(options):
+            combo.append(opt['value'], opt['label'])
+            if str(opt['value']) == str(default_value):
+                active_index = i
+                
+        combo.set_active(active_index)
+        combo.set_hexpand(True)
+        box.append(combo)
+        return box, combo
+
+    @staticmethod
+    def create_dynamic_color(label_text: str, default_rgb_str: str) -> tuple:
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6, valign=Gtk.Align.CENTER)
+        label = Gtk.Label(label=label_text)
+        label.set_xalign(0)
+        box.append(label)
+        
+        color_btn = Gtk.ColorButton()
+        # default_rgb_str is typically "r g b" like "1 1 1" or "0.5 0.5 0.5"
+        try:
+            r, g, b = map(float, default_rgb_str.split())
+            rgba = Gdk.RGBA()
+            rgba.red = r
+            rgba.green = g
+            rgba.blue = b
+            rgba.alpha = 1.0
+            color_btn.set_rgba(rgba)
+        except Exception:
+            pass
+            
+        color_btn.set_hexpand(True)
+        box.append(color_btn)
+        return box, color_btn

@@ -31,10 +31,14 @@ class UIBuilder:
 
         scrolled_window = self.build_wallpaper_grid()
         paned.set_start_child(scrolled_window)
+        paned.set_shrink_start_child(True)
+        paned.set_resize_start_child(True)
 
         sidebar, prop_widgets_box = self.build_properties_sidebar()
         sidebar.set_visible(False)
         paned.set_end_child(sidebar)
+        paned.set_shrink_end_child(False)
+        paned.set_resize_end_child(False)
         
         # Store references for later use
         self.paned = paned
@@ -143,6 +147,7 @@ class UIBuilder:
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10,
                           margin_top=10, margin_bottom=10,
                           margin_start=10, margin_end=10)
+        sidebar.set_size_request(350, -1)
 
         sidebar_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         sidebar_title = Gtk.Label(label="<big><b>Properties</b></big>",
@@ -154,9 +159,8 @@ class UIBuilder:
         sidebar_header.append(close_button)
         sidebar.append(sidebar_header)
 
-        sidebar_image = Gtk.Picture()
-        sidebar_image.set_keep_aspect_ratio(True)
-        sidebar_image.set_can_shrink(True)
+        sidebar_image = Gtk.Image()
+        sidebar_image.set_pixel_size(250)
         sidebar_image.set_margin_bottom(10)
         sidebar.append(sidebar_image)
 
@@ -187,6 +191,17 @@ class UIBuilder:
         self.speed_spin = speed_spin
         self.scale_combo = scale_combo
         self.prop_widgets_box = prop_widgets_box
+        
+        # Scrolled window for dynamic properties
+        dynamic_scroll = Gtk.ScrolledWindow()
+        dynamic_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        dynamic_scroll.set_vexpand(True)
+        dynamic_scroll.set_hexpand(True)
+        dynamic_scroll.set_min_content_height(150)
+        
+        self.dynamic_props_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        dynamic_scroll.set_child(self.dynamic_props_box)
+        sidebar.append(dynamic_scroll)
 
         return sidebar, prop_widgets_box
 
@@ -228,7 +243,8 @@ class UIBuilder:
             'audio_check': self.audio_check,
             'speed_spin': self.speed_spin,
             'scale_combo': self.scale_combo,
-            'prop_widgets_box': self.prop_widgets_box
+            'prop_widgets_box': self.prop_widgets_box,
+            'dynamic_props_box': self.dynamic_props_box
         }
 
 class GridManager:

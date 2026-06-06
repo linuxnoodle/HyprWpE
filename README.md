@@ -14,7 +14,7 @@ This project provides a set of scripts and a GTK4 graphical interface to find, c
 
       - **Video:** Plays video files using the efficient `mpvpaper`.
       - **Web:** Renders HTML, JS, and CSS based wallpapers using a `WebKitGTK` view.
-      - **Scene:** Renders basic 2D image-layer scenes using `pyglet` and OpenGL.
+      - **Scene:** Renders fully animated 2D and 3D scenes using `linux-wallpaperengine`, bringing 100% shader-accurate animations natively to Linux Wayland/X11.
 
   - **Feature-Rich GUI:** A modern GTK4 application for browsing, searching, and filtering your installed wallpapers.
 
@@ -43,8 +43,8 @@ This project provides a set of scripts and a GTK4 graphical interface to find, c
       - It launches the appropriate renderer for the wallpaper type:
           - **Video:** `mpvpaper` displays the video on the target monitor, using properties from `properties.yaml`.
           - **Web:** `web_viewer.py` launches a `gtk4-layer-shell` window with an embedded web view.
-          - **Scene:** `scene_viewer.py` launches a `gtk4-layer-shell` window that renders the scene with `pyglet`.
-4.  **Layering:** The `web_viewer.py` and `scene_viewer.py` applications use the `gtk4-layer-shell` protocol to instruct Hyprland to place them on the background layer, making them function as proper wallpapers.
+          - **Scene:** `linux-wallpaperengine` is launched directly, processing the `.pkg` and shaders natively to render the animated 3D scene on the Wayland root layer.
+4.  **Layering:** The `web_viewer.py` uses the `gtk4-layer-shell` protocol, while `linux-wallpaperengine` utilizes its native rendering paths to instruct Hyprland to place them on the background layer, making them function as proper wallpapers.
 
 -----
 
@@ -69,9 +69,9 @@ This project provides a set of scripts and a GTK4 graphical interface to find, c
 2.  **Install dependencies (example for Arch Linux):**
 
     ```bash
-    sudo pacman -S mpvpaper yq python-gobject python-pyglet python-yaml webkitgtk-6.0 gtk4 gtk-layer-shell
+    sudo pacman -S mpvpaper yq python-gobject python-yaml webkitgtk-6.0 gtk4 gtk4-layer-shell
     # or using an aur helper like paru
-    paru -S mpvpaper yq python-gobject python-pyglet python-yaml webkitgtk-6.0 gtk4 gtk4-layer-shell
+    paru -S mpvpaper yq python-gobject python-yaml webkitgtk-6.0 gtk4 gtk4-layer-shell
     ```
 
     *Note: The `yq` required by this project is the Python implementation. If your package manager provides multiple, ensure you install the one based on Python, not the one written in Go.*

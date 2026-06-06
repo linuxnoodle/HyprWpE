@@ -66,8 +66,14 @@ class WallpaperSelectorApp(Gtk.Application):
             print(f"Could not load CSS file: {e}")
 
     def setup_signal_handlers(self):
-        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, self.shutdown)
-        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, self.shutdown)
+        try:
+            from gi.repository import GLibUnix
+            GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, self.shutdown)
+            GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, self.shutdown)
+        except ImportError:
+            # Fallback for older versions
+            GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, self.shutdown)
+            GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, self.shutdown)
 
     def shutdown(self, *args):
         print("\nShutdown signal received. Stopping all wallpapers.")
@@ -114,6 +120,7 @@ class WallpaperSelectorApp(Gtk.Application):
         self.audio_check = sidebar_widgets['audio_check']
         self.speed_spin = sidebar_widgets['speed_spin']
         self.scale_combo = sidebar_widgets['scale_combo']
+        self.dynamic_props_box = sidebar_widgets['dynamic_props_box']
         
         # Setup property signal handlers
         self.property_signal_handlers = {}
@@ -170,7 +177,7 @@ class WallpaperSelectorApp(Gtk.Application):
         self.selected_wallpaper_id = wallpaper_id
         
         self.sidebar.set_visible(True)
-        current_width = self.win.get_allocated_width()
+        current_width = self.win.get_width()
         initial_position = int(current_width * 3 / 4)
         self.ui_builder.set_paned_position(initial_position)
         
@@ -221,11 +228,39 @@ class WallpaperSelectorApp(Gtk.Application):
         if not wp_data: return
 
         if os.path.exists(wp_data.preview_path):
-            self.sidebar_image.set_filename(wp_data.preview_path)
+            try:
+                from gi.repository import GdkPixbuf
+                if wp_data.preview_path.lower().endswith('.gif'):
+                    pixbuf_anim = GdkPixbuf.PixbufAnimation.new_from_file(wp_data.preview_path)
+                    self.sidebar_image.set_from_animation(pixbuf_anim)
+                else:
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(wp_data.preview_path, 350, 250, True)
+                    self.sidebar_image.set_from_pixbuf(pixbuf)
+            except Exception as e:
+                print(f"Error loading preview image: {e}")
+                self.sidebar_image.set_from_icon_name("image-missing-symbolic")
         else:
-            icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
-            paintable = icon_theme.lookup_icon("image-missing-symbolic", None, 128, 1, Gtk.TextDirection.NONE, None)
-            self.sidebar_image.set_paintable(paintable)
+            self.sidebar_image.set_from_icon_name("image-missing-symbolic")
+
+        # Clear existing dynamic widgets from the properties box
+        # The first 4 children are: audio_check, speed_box, scale_box, apply_button
+        # Wait, the apply_button is at the very end. 
+        # Actually, let's keep references to static widgets or clear everything and re-add.
+        # But we only added the static widgets in build_properties_sidebar.
+        # Let's remove all children except the first 4.
+        # Wait, build_properties_sidebar sets up: audio, speed, scale, apply.
+        # A safer way is to have a dedicated container for dynamic properties.
+        # Let's add a dynamic box in build_properties_sidebar.
+        
+        # We will modify build_properties_sidebar shortly to include self.dynamic_props_box.
+        # For now, let's assume self.dynamic_props_box exists.
+        if hasattr(self, 'dynamic_props_box'):
+            child = self.dynamic_props_box.get_first_child()
+            while child:
+                next_child = child.get_next_sibling()
+                self.dynamic_props_box.remove(child)
+                child = next_child
+
         self.audio_check.handler_block(self.property_signal_handlers['audio'])
         self.speed_spin.handler_block(self.property_signal_handlers['speed'])
         self.scale_combo.handler_block(self.property_signal_handlers['scale'])
@@ -238,6 +273,60 @@ class WallpaperSelectorApp(Gtk.Application):
         self.speed_spin.handler_unblock(self.property_signal_handlers['speed'])
         self.scale_combo.handler_unblock(self.property_signal_handlers['scale'])
 
+        # Generate dynamic properties for scene/video from project.json
+        scene_props = props.get('scene_props', {})
+        self.dynamic_widgets_map = {}
+        
+        project_json_path = os.path.join(self.data_manager.wallpaper_dir, self.selected_wallpaper_id, "project.json")
+        if os.path.exists(project_json_path):
+            try:
+                with open(project_json_path, 'r') as f:
+                    proj_data = json.load(f)
+                    general_props = proj_data.get('general', {}).get('properties', {})
+                    
+                    # Sort properties by 'order'
+                    sorted_props = sorted(general_props.items(), key=lambda x: x[1].get('order', 999))
+                    
+                    from ui.components import PropertyControls
+                    
+                    for prop_key, prop_data in sorted_props:
+                        prop_type = prop_data.get('type')
+                        prop_text = prop_data.get('text', prop_key)
+                        
+                        # Current value: check saved scene_props, else default from json
+                        current_val = scene_props.get(prop_key, prop_data.get('value'))
+                        
+                        if prop_type == 'bool':
+                            widget = PropertyControls.create_dynamic_bool(prop_text, bool(current_val))
+                            widget.connect('toggled', self.on_dynamic_property_changed, prop_key, 'bool')
+                            self.dynamic_props_box.append(widget)
+                            self.dynamic_widgets_map[prop_key] = widget
+                            
+                        elif prop_type == 'slider':
+                            min_val = float(prop_data.get('min', 0))
+                            max_val = float(prop_data.get('max', 100))
+                            step = float(prop_data.get('step', 1))
+                            box, scale = PropertyControls.create_dynamic_slider(prop_text, min_val, max_val, step, float(current_val))
+                            scale.connect('value-changed', self.on_dynamic_property_changed, prop_key, 'slider')
+                            self.dynamic_props_box.append(box)
+                            self.dynamic_widgets_map[prop_key] = scale
+                            
+                        elif prop_type == 'combo':
+                            options = prop_data.get('options', [])
+                            box, combo = PropertyControls.create_dynamic_combo(prop_text, options, current_val)
+                            combo.connect('changed', self.on_dynamic_property_changed, prop_key, 'combo')
+                            self.dynamic_props_box.append(box)
+                            self.dynamic_widgets_map[prop_key] = combo
+                            
+                        elif prop_type == 'color':
+                            box, color_btn = PropertyControls.create_dynamic_color(prop_text, str(current_val))
+                            color_btn.connect('color-set', self.on_dynamic_property_changed, prop_key, 'color')
+                            self.dynamic_props_box.append(box)
+                            self.dynamic_widgets_map[prop_key] = color_btn
+                            
+            except Exception as e:
+                print(f"Error parsing dynamic properties: {e}")
+
     # --- Performance Fix: Only save properties, don't apply them ---
     def on_property_changed(self, widget, *args):
         wid = self.selected_wallpaper_id
@@ -248,9 +337,29 @@ class WallpaperSelectorApp(Gtk.Application):
         elif isinstance(widget, Gtk.ComboBoxText): self.wallpaper_properties[wid]['scale'] = widget.get_active_text()
         self.config_manager.save_properties(self.wallpaper_properties)
 
+    def on_dynamic_property_changed(self, widget, prop_key, prop_type):
+        wid = self.selected_wallpaper_id
+        if not wid: return
+        if wid not in self.wallpaper_properties: self.wallpaper_properties[wid] = {}
+        if 'scene_props' not in self.wallpaper_properties[wid]:
+            self.wallpaper_properties[wid]['scene_props'] = {}
+            
+        if prop_type == 'bool':
+            self.wallpaper_properties[wid]['scene_props'][prop_key] = widget.get_active()
+        elif prop_type == 'slider':
+            self.wallpaper_properties[wid]['scene_props'][prop_key] = widget.get_value()
+        elif prop_type == 'combo':
+            self.wallpaper_properties[wid]['scene_props'][prop_key] = widget.get_active_id() # active_id is what we need. Wait, combo text appends value as id. Let's use get_active_id
+        elif prop_type == 'color':
+            rgba = widget.get_rgba()
+            self.wallpaper_properties[wid]['scene_props'][prop_key] = f"{rgba.red:.3f} {rgba.green:.3f} {rgba.blue:.3f}"
+            
+        self.config_manager.save_properties(self.wallpaper_properties)
+
     # --- Performance Fix: New handler for the "Apply" button ---
     def on_apply_changes_clicked(self, button):
         print("Applying property changes...")
+        self.config_manager.save_properties(self.wallpaper_properties)
         self.apply_wallpaper()
 
     def apply_wallpaper(self, wallpaper_id=None, monitor=None):
